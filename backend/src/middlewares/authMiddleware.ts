@@ -5,7 +5,7 @@ import { logger } from '../utils/logger.js';
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
 export interface AuthRequest extends Request {
-    user?: JwtPayload;
+    user?: { userId: string; role: 'ADMIN' | 'MEMBER' };
 }
 
 export const requireAuth = (req: AuthRequest, res: Response, next: NextFunction): void => {
@@ -22,8 +22,11 @@ export const requireAuth = (req: AuthRequest, res: Response, next: NextFunction)
     }
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded as JwtPayload;
+        const decoded = jwt.verify(token, JWT_SECRET) as AuthRequest['user'];
+        if (!decoded) {
+            throw new Error();
+        }
+        req.user = decoded;
         next();
     } catch (error) {
         logger.error({ err: error }, 'Token verification failed');

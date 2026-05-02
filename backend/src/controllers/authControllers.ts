@@ -1,11 +1,10 @@
 import type { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../shared/prisma.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { registerSchema, loginSchema } from '../shared/schemas.js';
 import { logger } from '../utils/logger.js';
 
-const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
@@ -41,6 +40,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
             user: { id: user.id, name: user.name, email: user.email, role: user.role },
         });
     } catch (error: any) {
+        logger.error(error.message);
         res.status(400).json({ error: error.errors || 'Registration failed' });
     }
 };
