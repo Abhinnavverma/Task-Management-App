@@ -22,6 +22,7 @@ export interface Task {
     dueDate?: string | null;
     projectId: string;
     assigneeId?: string | null;
+    assignee?: User | null;
     createdAt: string;
     updatedAt: string;
 }

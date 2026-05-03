@@ -1,4 +1,4 @@
-import type { DashboardStats } from '@/types/models';
+import type { DashboardStats, User } from '@/types/models';
 import { apiSlice } from '../api/api';
 
 export const dashboardApi = apiSlice.injectEndpoints({
@@ -7,7 +7,10 @@ export const dashboardApi = apiSlice.injectEndpoints({
             query: () => '/dashboard/stats',
             providesTags: ['Dashboard', 'Task'],
         }),
+        getUsers: builder.query<User[], void>({
+            query: () => '/users',
+        }),
     }),
 });
 
-export const { useGetDashboardStatsQuery } = dashboardApi;
+export const { useGetDashboardStatsQuery, useGetUsersQuery } = dashboardApi;

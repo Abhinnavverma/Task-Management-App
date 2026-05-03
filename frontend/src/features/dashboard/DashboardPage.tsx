@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { apiSlice } from '../api/api';
 import type { RootState } from '../../store/store';
 import { logout } from '../auth/authSlice';
-import { useGetDashboardStatsQuery } from './dashboardApi';
+import { useGetDashboardStatsQuery, useGetUsersQuery } from './dashboardApi';
 import {
     useGetTasksQuery,
     useCreateTaskMutation,
@@ -35,10 +36,14 @@ export default function DashboardPage() {
     const { data: stats, isLoading: statsLoading } = useGetDashboardStatsQuery();
     const { data: projects, isLoading: projectsLoading } = useGetProjectsQuery();
     const { data: tasks, isLoading: tasksLoading } = useGetTasksQuery(undefined);
+    const { data: users } = useGetUsersQuery(undefined);
 
     const [createProject] = useCreateProjectMutation();
     const [createTask] = useCreateTaskMutation();
     const [updateStatus] = useUpdateTaskStatusMutation();
+
+    const [isProjectOpen, setIsProjectOpen] = useState(false);
+    const [isTaskOpen, setIsTaskOpen] = useState(false);
 
     const [newProject, setNewProject] = useState({ name: '', description: '' });
     const [newTask, setNewTask] = useState({
@@ -46,6 +51,7 @@ export default function DashboardPage() {
         description: '',
         projectId: '',
         dueDate: '',
+        assigneeId: '',
     });
 
     const handleCreateProject = async (e: React.FormEvent) => {
@@ -53,6 +59,7 @@ export default function DashboardPage() {
         if (!newProject.name) return;
         await createProject(newProject);
         setNewProject({ name: '', description: '' });
+        setIsProjectOpen(false);
     };
 
     const handleCreateTask = async (e: React.FormEvent) => {
@@ -63,10 +70,12 @@ export default function DashboardPage() {
             ...newTask,
             description: newTask.description || undefined,
             dueDate: newTask.dueDate ? new Date(newTask.dueDate).toISOString() : undefined,
+            assigneeId: newTask.assigneeId || undefined,
         };
 
         await createTask(payload);
-        setNewTask({ title: '', description: '', projectId: '', dueDate: '' });
+        setNewTask({ title: '', description: '', projectId: '', dueDate: '', assigneeId: '' });
+        setIsTaskOpen(false);
     };
 
     const handleStatusChange = async (taskId: string, newStatus: string) => {
@@ -75,10 +84,12 @@ export default function DashboardPage() {
 
     const handleLogout = () => {
         dispatch(logout());
+        dispatch(apiSlice.util.resetApiState());
     };
 
-    if (statsLoading || projectsLoading || tasksLoading)
+    if (statsLoading || projectsLoading || tasksLoading) {
         return <div className="p-10 text-center">Loading dashboard...</div>;
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 p-8">
@@ -117,6 +128,8 @@ export default function DashboardPage() {
                                 <FormDialog
                                     title="Create Project"
                                     trigger={<Button size="sm">New Project</Button>}
+                                    open={isProjectOpen}
+                                    onOpenChange={setIsProjectOpen}
                                 >
                                     <form onSubmit={handleCreateProject} className="space-y-4">
                                         <Input
@@ -168,6 +181,8 @@ export default function DashboardPage() {
                                 <FormDialog
                                     title="Create Task"
                                     trigger={<Button size="sm">New Task</Button>}
+                                    open={isTaskOpen}
+                                    onOpenChange={setIsTaskOpen}
                                 >
                                     <form onSubmit={handleCreateTask} className="space-y-4">
                                         <Input
@@ -204,6 +219,25 @@ export default function DashboardPage() {
                                                 ))}
                                             </SelectContent>
                                         </Select>
+
+                                        <Select
+                                            onValueChange={(val) =>
+                                                setNewTask({ ...newTask, assigneeId: val })
+                                            }
+                                            value={newTask.assigneeId}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Assign to Member (Optional)" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {users?.map((u) => (
+                                                    <SelectItem key={u.id} value={u.id}>
+                                                        {u.name} ({u.role})
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+
                                         <Input
                                             type="date"
                                             placeholder="Due Date (Optional)"
@@ -222,42 +256,61 @@ export default function DashboardPage() {
                     />
 
                     <div className="space-y-2">
-                        {tasks?.map((task) => (
-                            <Card key={task.id} className="p-4 flex justify-between items-center">
-                                <div>
-                                    <h3 className="font-medium text-gray-900">{task.title}</h3>
-                                    {task.description && (
-                                        <p className="text-sm text-gray-600 mt-1">
-                                            {task.description}
-                                        </p>
-                                    )}
-                                    <div className="flex gap-2 items-center mt-2">
-                                        {task.dueDate && (
-                                            <Badge
-                                                variant="outline"
-                                                className="text-xs font-normal"
-                                            >
-                                                Due: {new Date(task.dueDate).toLocaleDateString()}
-                                            </Badge>
-                                        )}
-                                    </div>
-                                </div>
+                        {tasks?.map((task) => {
+                            const assigneeName =
+                                task.assignee?.name ||
+                                users?.find((u) => u.id === task.assigneeId)?.name;
 
-                                <Select
-                                    defaultValue={task.status}
-                                    onValueChange={(val) => handleStatusChange(task.id, val)}
+                            return (
+                                <Card
+                                    key={task.id}
+                                    className="p-4 flex justify-between items-center"
                                 >
-                                    <SelectTrigger className="w-[140px]">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="TODO">To Do</SelectItem>
-                                        <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                                        <SelectItem value="DONE">Done</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </Card>
-                        ))}
+                                    <div>
+                                        <h3 className="font-medium text-gray-900">{task.title}</h3>
+                                        {task.description && (
+                                            <p className="text-sm text-gray-600 mt-1">
+                                                {task.description}
+                                            </p>
+                                        )}
+                                        <div className="flex gap-2 items-center mt-2">
+                                            {task.dueDate && (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="text-xs font-normal"
+                                                >
+                                                    Due:{' '}
+                                                    {new Date(task.dueDate).toLocaleDateString()}
+                                                </Badge>
+                                            )}
+
+                                            {assigneeName && (
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="text-xs font-normal bg-blue-50 text-blue-700"
+                                                >
+                                                    Assigned: {assigneeName}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <Select
+                                        defaultValue={task.status}
+                                        onValueChange={(val) => handleStatusChange(task.id, val)}
+                                    >
+                                        <SelectTrigger className="w-[140px]">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="TODO">To Do</SelectItem>
+                                            <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                                            <SelectItem value="DONE">Done</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </Card>
+                            );
+                        })}
                         {tasks?.length === 0 && (
                             <p className="text-gray-500 italic">No tasks found.</p>
                         )}

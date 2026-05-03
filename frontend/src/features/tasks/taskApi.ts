@@ -13,7 +13,13 @@ export const tasksApi = apiSlice.injectEndpoints({
         }),
         createTask: builder.mutation<
             Task,
-            { title: string; projectId: string; description?: string }
+            {
+                title: string;
+                projectId: string;
+                description?: string;
+                assigneeId?: string | null;
+                dueDate?: string | null;
+            }
         >({
             query: (newTask) => ({
                 url: '/tasks',

@@ -11,11 +11,13 @@ export interface FormDialogProps {
     trigger: ReactNode;
     title: string;
     children: ReactNode;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
 }
 
-export function FormDialog({ trigger, title, children }: FormDialogProps) {
+export function FormDialog({ trigger, title, children, open, onOpenChange }: FormDialogProps) {
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
             <DialogContent>
                 <DialogHeader>

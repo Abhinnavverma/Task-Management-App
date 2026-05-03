@@ -7,6 +7,7 @@ import * as z from 'zod';
 
 import { useLoginMutation, useRegisterMutation } from './authApi';
 import { setCredentials } from './authSlice';
+import { apiSlice } from '../api/api';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,6 +49,8 @@ export default function AuthPage() {
         try {
             const result = await login(data).unwrap();
             dispatch(setCredentials({ user: result.user, token: result.token }));
+            // Clear any cached API state so previous session data doesn't linger
+            dispatch(apiSlice.util.resetApiState());
             navigate('/dashboard');
         } catch (err: unknown) {
             if (isApiError(err)) {
@@ -62,6 +65,8 @@ export default function AuthPage() {
         try {
             const result = await register(data).unwrap();
             dispatch(setCredentials({ user: result.user, token: result.token }));
+            // Clear stale cache after register/login
+            dispatch(apiSlice.util.resetApiState());
             navigate('/dashboard');
         } catch (err) {
             if (isApiError(err)) {
@@ -74,7 +79,7 @@ export default function AuthPage() {
 
     return (
         <div className="flex h-screen w-full items-center justify-center bg-gray-50">
-            <Card className="w-[400px]">
+            <Card className="w-96">
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl font-bold">Task Manager</CardTitle>
                     <CardDescription>Sign in to manage your projects</CardDescription>
