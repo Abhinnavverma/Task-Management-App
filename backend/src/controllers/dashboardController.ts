@@ -1,6 +1,7 @@
 import type { Response } from 'express';
 import { prisma } from '../shared/prisma.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
+import { logger } from '../utils/logger.js';
 
 export const getDashboardStats = async (req: AuthRequest, res: Response): Promise<void> => {
     const { userId, role } = req.user!;
